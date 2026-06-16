@@ -1,69 +1,46 @@
 # Player Card Overlay
 
-A broadcast-style web overlay that displays a player card with a looping video, name, jersey number, grade, height, and weight. Designed for use as an **OBS Browser Source** (transparent background) during livestreams.
+A broadcast-style web overlay that displays a player card with a looping video, name, jersey number, grade, height, and weight. Comes with a **mobile controller** to select the active player from your phone during a broadcast. Uses **Firebase Firestore** for real-time sync — same setup as the BGSN scoreboard.
 
-![preview](https://github.com/user-attachments/assets/placeholder)
+## How It Works
 
-## Features
+- **`player-card.html`** — the overlay (add as an OBS Browser Source)
+- **`controller.html`** — mobile-friendly page to select/manage players (open on your phone)
+- **`player-card.css`** — overlay styles
 
-- **Looping video** of the player (left panel)
-- **Jersey number badge** overlaid on the video
-- **Player stats** — name, grade, height, weight
-- **Transparent background** — composites cleanly in OBS
-- **Slide-in animation** on load
-- **URL query-param driven** — swap players by changing the URL, no code edits needed
-- **Custom accent color** — match your school/team colors
-- **No build step** — plain HTML / CSS / JS
+The controller writes to Firestore, the overlay listens with `onSnapshot` — instant updates over the internet, no local server needed.
 
 ## Quick Start
 
-Serve the files with any static server:
+1. **Host the files** — GitHub Pages, Netlify, or any static host.
 
-```bash
-# Python
-python3 -m http.server 8000
+2. **Open the controller** on your phone and add your players via the **Manage Roster** tab.
 
-# or Node
-npx serve .
-```
+3. **Add the overlay in OBS:**
+   - Add a **Browser Source**
+   - URL: `https://<your-host>/player-card.html`
+   - Width: `1920`, Height: `1080`
+   - Check **"Shutdown source when not visible"**
 
-Open in a browser:
+4. **During the broadcast**, open the controller on your phone:
+   - Tap a player to show their card on stream
+   - Use **Show** / **Hide** to toggle the overlay
 
-```
-http://localhost:8000/player-card.html?name=Marcus+Johnson&number=23&grade=Junior&height=6'2"&weight=185+lbs&video=clips/marcus.mp4&demo=1
-```
+## Controller Features
 
-## URL Parameters
+- **Select tab** — tap a player to push them live on the overlay
+- **Manage Roster tab** — add, edit, and delete players
+- **Show / Hide buttons** — toggle overlay visibility without changing the player
+- Roster is stored in Firestore — persists across devices and sessions
 
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `name` | Player's full name | `Marcus+Johnson` |
-| `number` | Jersey number | `23` |
-| `grade` | Grade / year | `Junior` |
-| `height` | Height | `6'2"` |
-| `weight` | Weight | `185+lbs` |
-| `video` | URL or path to a short video (mp4 / webm) | `clips/marcus.mp4` |
-| `accent` | Hex accent color (without `#`) | `ff5722` |
-| `demo` | Set to `1` to show a dark background for previewing outside OBS | `1` |
+## Firebase
 
-## OBS Setup
-
-1. **Host the files** — GitHub Pages, Netlify, or any static host. Or run a local server on your streaming PC.
-2. **Add a Browser Source** in OBS.
-3. Set the **URL** to your hosted `player-card.html` with the appropriate query params for the player.
-4. Set the **Width** to `1920` and **Height** to `1080` (or match your canvas).
-5. Make sure **"Shutdown source when not visible"** is checked so the slide-in animation replays each time you show the source.
-
-To switch players, just update the URL in the Browser Source properties.
-
-## Hosting on GitHub Pages
-
-1. Push this repo to GitHub.
-2. Go to **Settings → Pages** and set the source to the `main` branch.
-3. Your overlay will be live at `https://<username>.github.io/player-overlay/player-card.html?name=...`
+Uses the same Firebase project as the BGSN scoreboard (`bgsn-scoreboard`). Data is stored in the `playerOverlay` collection:
+- `playerOverlay/live` — currently displayed player + visibility
+- `playerOverlay/roster` — full player list
 
 ## Customization
 
-- Edit `player-card.css` to change fonts, sizes, card layout, or animation timing.
-- The `--accent` CSS variable controls the highlight color (label text, number badge, gradient stripe). Override it with the `accent` URL param or in CSS.
-- Add a `.hidden` class to `#playerCard` via JavaScript to trigger the slide-out animation for dismissing the card.
+- **Accent color** — add `?accent=ff5722` to the overlay URL, or edit `--accent` in `player-card.css`
+- **Demo mode** — add `?demo=1` to the overlay URL to see a dark background for previewing outside OBS
+- **Layout / fonts / animation** — edit `player-card.css`

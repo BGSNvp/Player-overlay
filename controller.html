@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Player Controller</title>
+  <style>
+    :root {
+      --bg: #0f1220;
+      --bg-elev: #171b2e;
+      --bg-elev-2: #1f2540;
+      --text: #e8eaf2;
+      --muted: #9aa0b5;
+      --accent: #6c8cff;
+      --accent-glow: rgba(108, 140, 255, 0.25);
+      --danger: #ff5c72;
+      --success: #44d29a;
+      --border: #2a3050;
+      --radius: 14px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent; min-height: 100vh;
+    }
+    body { padding: 16px; padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .header h1 { font-size: 1.3rem; font-weight: 700; }
+    .status { font-size: 0.7rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .status.connected { background: var(--success); color: #0a0d1a; }
+    .status.offline { background: var(--danger); color: #fff; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+    .tab { flex: 1; padding: 10px; border: 2px solid var(--border); border-radius: 10px; background: var(--bg-elev); color: var(--muted); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s; }
+    .tab.active { border-color: var(--accent); color: var(--text); background: var(--bg-elev-2); }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Player list */
+    .player-list { display: flex; flex-direction: column; gap: 10px; }
+    .player-btn {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--bg-elev); border: 2px solid var(--border); border-radius: var(--radius);
+      padding: 14px 16px; color: var(--text); font: inherit; font-size: 1rem; text-align: left;
+      cursor: pointer; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+    .player-btn:active { background: var(--bg-elev-2); }
+    .player-btn.active { border-color: var(--accent); background: var(--bg-elev-2); box-shadow: 0 0 0 1px var(--accent), 0 2px 12px var(--accent-glow); }
+    .player-number { background: var(--accent); color: #fff; font-weight: 800; font-size: 1.1rem; min-width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 10px; flex-shrink: 0; }
+    .player-details { flex: 1; min-width: 0; }
+    .player-name-text { font-weight: 700; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .player-meta { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+
+    /* Manage roster form */
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 4px; }
+    .form-group input { width: 100%; padding: 10px 12px; border: 2px solid var(--border); border-radius: 10px; background: var(--bg-elev); color: var(--text); font: inherit; font-size: 0.95rem; outline: none; }
+    .form-group input:focus { border-color: var(--accent); }
+    .form-row { display: flex; gap: 10px; }
+    .form-row .form-group { flex: 1; }
+
+    .btn { padding: 12px 20px; border: none; border-radius: 10px; font: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
+    .btn:active { opacity: 0.7; }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--muted); }
+    .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+    .btn-row .btn { flex: 1; }
+
+    .roster-item { display: flex; align-items: center; gap: 10px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+    .roster-item .player-details { flex: 1; }
+    .roster-item .edit-btn, .roster-item .del-btn { background: none; border: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; padding: 4px 8px; }
+    .roster-item .del-btn { color: var(--danger); }
+
+    .empty-msg { color: var(--muted); text-align: center; padding: 40px 20px; font-size: 0.9rem; }
+
+    /* Bottom bar */
+    .bottom-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(15, 18, 32, 0.95); backdrop-filter: blur(10px);
+      border-top: 1px solid var(--border);
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; gap: 10px;
+    }
+    .bottom-bar button { flex: 1; padding: 14px; border: none; border-radius: 10px; font: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
+    .bottom-bar button:active { opacity: 0.7; }
+    .btn-show { background: var(--success); color: #0a0d1a; }
+    .btn-hide { background: var(--danger); color: #fff; }
+
+    .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px); background: var(--bg-elev-2); color: var(--text); padding: 10px 20px; border-radius: 10px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 4px 20px rgba(0,0,0,0.4); opacity: 0; transition: transform 0.3s, opacity 0.3s; pointer-events: none; z-index: 100; }
+    .toast.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* Style panel */
+    .style-field { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .style-field-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .style-field-header h4 { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .toggle { position: relative; width: 44px; height: 24px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle .slider { position: absolute; inset: 0; background: var(--border); border-radius: 12px; cursor: pointer; transition: background 0.2s; }
+    .toggle .slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+    .toggle input:checked + .slider { background: var(--accent); }
+    .toggle input:checked + .slider::before { transform: translateX(20px); }
+    .style-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .style-controls label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); display: block; margin-bottom: 2px; }
+    .style-controls input[type="number"] { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; font-size: 0.85rem; }
+    .style-controls input[type="color"] { width: 100%; height: 32px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); cursor: pointer; padding: 2px; }
+    .style-controls .full-width { grid-column: 1 / -1; }
+    .btn-save-styles { width: 100%; margin-top: 16px; }
+
+    /* Portrait phone optimizations */
+    @media (max-width: 420px) {
+      body { padding: 12px; padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+      .header h1 { font-size: 1.1rem; }
+      .tabs { gap: 4px; }
+      .tab { padding: 8px 4px; font-size: 0.75rem; }
+      .form-row { flex-direction: column; gap: 0; }
+      .style-controls { grid-template-columns: 1fr; }
+      .player-btn { padding: 12px; gap: 10px; }
+      .player-number { min-width: 42px; height: 42px; font-size: 1rem; }
+      .style-field { padding: 10px; }
+      .bottom-bar { padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+      .bottom-bar button { padding: 12px; font-size: 0.85rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Player Overlay</h1>
+    <span id="statusBadge" class="status offline">Connecting</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('select')">Select</button>
+    <button class="tab" onclick="switchTab('manage')">Manage Roster</button>
+    <button class="tab" onclick="switchTab('style')">Style</button>
+  </div>
+
+  <!-- SELECT tab -->
+  <div id="panelSelect" class="panel active">
+    <div id="playerList" class="player-list"></div>
+    <div id="emptySelect" class="empty-msg" style="display:none;">No players yet. Go to Manage Roster to add some.</div>
+  </div>
+
+  <!-- MANAGE tab -->
+  <div id="panelManage" class="panel">
+    <div id="rosterList"></div>
+    <div id="emptyManage" class="empty-msg" style="display:none;">No players yet.</div>
+    <h3 style="margin:20px 0 12px; font-size:1rem;" id="formTitle">Add Player</h3>
+    <form id="playerForm" onsubmit="return savePlayer(event)">
+      <input type="hidden" id="editId" />
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="fName" placeholder="Full name" required />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Number</label>
+          <input type="text" id="fNumber" placeholder="#" required />
+        </div>
+        <div class="form-group">
+          <label>Grade</label>
+          <input type="text" id="fGrade" placeholder="Junior" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Height</label>
+          <input type="text" id="fHeight" placeholder="6'2&quot;" />
+        </div>
+        <div class="form-group">
+          <label>Weight</label>
+          <input type="text" id="fWeight" placeholder="185 lbs" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Video</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="fVideoSelect" onchange="onVideoSelect()" style="flex:1;padding:10px 12px;border:2px solid var(--border);border-radius:10px;background:var(--bg-elev);color:var(--text);font:inherit;font-size:0.95rem;">
+            <option value="">-- Select from repo --</option>
+          </select>
+          <button type="button" class="btn btn-outline" onclick="refreshVideoList()" style="padding:10px 12px;font-size:0.8rem;">&#8635;</button>
+        </div>
+        <input type="text" id="fVideo" placeholder="Or paste a URL manually" style="margin-top:6px;" />
+      </div>
+      <div class="btn-row">
+        <button type="submit" class="btn btn-accent" id="saveBtn">Add Player</button>
+        <button type="button" class="btn btn-outline" onclick="cancelEdit()" id="cancelBtn" style="display:none;">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- STYLE tab -->
+  <div id="panelStyle" class="panel">
+    <div id="styleFields"></div>
+    <button class="btn btn-accent btn-save-styles" onclick="saveStyles()">Apply Styles</button>
+  </div>
+
+  <div class="bottom-bar">
+    <button class="btn-show" onclick="showOverlay()">Show</button>
+    <button class="btn-hide" onclick="hideOverlay()">Hide</button>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const app = initializeApp({
+      apiKey: "AIzaSyABNKTrQKTiw4U78JGDFAw9eZDZM-3gK2s",
+      authDomain: "bgsn-scoreboard.firebaseapp.com",
+      projectId: "bgsn-scoreboard",
+      storageBucket: "bgsn-scoreboard.firebasestorage.app",
+      messagingSenderId: "888144845710",
+      appId: "1:888144845710:web:fe848d883391be787622df"
+    });
+    const db = getFirestore(app);
+    const liveRef = doc(db, "playerOverlay", "live");
+    const rosterRef = doc(db, "playerOverlay", "roster");
+
+    let roster = [];
+    let activeId = "";
+    let overlayVisible = false;
+    let connected = false;
+    let currentStyles = {};
+
+    /* --- Sync roster from Firestore --- */
+    onSnapshot(rosterRef, (snap) => {
+      connected = true;
+      updateStatus();
+      const d = snap.data();
+      roster = (d && d.players) ? d.players : [];
+      renderSelectList();
+      renderRosterList();
+    }, () => {
+      connected = false;
+      updateStatus();
+    });
+
+    /* --- Sync live state --- */
+    onSnapshot(liveRef, (snap) => {
+      const d = snap.data();
+      if (!d) return;
+      activeId = d.id || "";
+      overlayVisible = !!d.visible;
+      if (d.styles) currentStyles = d.styles;
+      renderSelectList();
+      updateVisBtn();
+    });
+
+    /* --- Select a player --- */
+    window.selectPlayer = function(id) {
+      const p = roster.find(r => r.id === id);
+      if (!p) return;
+      activeId = id;
+      overlayVisible = true;
+      setDoc(liveRef, { ...p, visible: true, styles: currentStyles }).then(() => {
+        showToast(p.name + " selected");
+      }).catch(() => showToast("Error updating"));
+    };
+
+    /* --- Show / Hide --- */
+    window.showOverlay = function() {
+      setDoc(liveRef, { visible: true }, { merge: true }).catch(() => showToast("Error"));
+    };
+    window.hideOverlay = function() {
+      setDoc(liveRef, { visible: false }, { merge: true }).catch(() => showToast("Error"));
+    };
+
+    /* --- Save roster to Firestore --- */
+    function saveRoster() {
+      return setDoc(rosterRef, { players: roster });
+    }
+
+    /* --- Add / edit player --- */
+    window.savePlayer = function(e) {
+      e.preventDefault();
+      const id = document.getElementById("editId").value;
+      const data = {
+        id: id || slugify(document.getElementById("fName").value) + "-" + Date.now(),
+        name: document.getElementById("fName").value.trim(),
+        number: document.getElementById("fNumber").value.trim(),
+        grade: document.getElementById("fGrade").value.trim(),
+        height: document.getElementById("fHeight").value.trim(),
+        weight: document.getElementById("fWeight").value.trim(),
+        video: document.getElementById("fVideo").value.trim(),
+      };
+      if (id) {
+        const idx = roster.findIndex(r => r.id === id);
+        if (idx >= 0) roster[idx] = data;
+      } else {
+        roster.push(data);
+      }
+      saveRoster().then(() => {
+        showToast(id ? "Player updated" : "Player added");
+        cancelEdit();
+      }).catch(() => showToast("Error saving"));
+      return false;
+    };
+
+    /* --- Edit player --- */
+    window.editPlayer = function(id) {
+      const p = roster.find(r => r.id === id);
+      if (!p) return;
+      document.getElementById("editId").value = p.id;
+      document.getElementById("fName").value = p.name;
+      document.getElementById("fNumber").value = p.number;
+      document.getElementById("fGrade").value = p.grade || "";
+      document.getElementById("fHeight").value = p.height || "";
+      document.getElementById("fWeight").value = p.weight || "";
+      document.getElementById("fVideo").value = p.video || "";
+      document.getElementById("formTitle").textContent = "Edit Player";
+      document.getElementById("saveBtn").textContent = "Update Player";
+      document.getElementById("cancelBtn").style.display = "";
+      switchTab("manage");
+    };
+
+    /* --- Delete player --- */
+    window.deletePlayer = function(id) {
+      if (!confirm("Remove this player?")) return;
+      roster = roster.filter(r => r.id !== id);
+      saveRoster().then(() => showToast("Player removed")).catch(() => showToast("Error"));
+    };
+
+    /* --- Cancel edit --- */
+    window.cancelEdit = function() {
+      document.getElementById("playerForm").reset();
+      document.getElementById("editId").value = "";
+      document.getElementById("formTitle").textContent = "Add Player";
+      document.getElementById("saveBtn").textContent = "Add Player";
+      document.getElementById("cancelBtn").style.display = "none";
+    };
+
+    /* --- Tabs --- */
+    window.switchTab = function(tab) {
+      const tabs = ['select', 'manage', 'style'];
+      document.querySelectorAll(".tab").forEach((t, i) => t.classList.toggle("active", tabs[i] === tab));
+      document.getElementById("panelSelect").classList.toggle("active", tab === "select");
+      document.getElementById("panelManage").classList.toggle("active", tab === "manage");
+      document.getElementById("panelStyle").classList.toggle("active", tab === "style");
+      if (tab === "style") renderStylePanel();
+    };
+
+    /* --- Render select list --- */
+    function renderSelectList() {
+      const list = document.getElementById("playerList");
+      const empty = document.getElementById("emptySelect");
+      if (!roster.length) { list.innerHTML = ""; empty.style.display = ""; return; }
+      empty.style.display = "none";
+      list.innerHTML = roster.map(p =>
+        '<button class="player-btn' + (p.id === activeId ? ' active' : '') + '" onclick="selectPlayer(\'' + esc(p.id) + '\')">' +
+        '<div class="player-number">#' + esc(p.number) + '</div>' +
+        '<div class="player-details">' +
+        '<div class="player-name-text">' + esc(p.name) + '</div>' +
+        '<div class="player-meta">' + esc(p.grade) + ' &middot; ' + esc(p.height) + ' &middot; ' + esc(p.weight) + '</div>' +
+        '</div></button>'
+      ).join("");
+    }
+
+    /* --- Render roster manage list --- */
+    function renderRosterList() {
+      const list = document.getElementById("rosterList");
+      const empty = document.getElementById("emptyManage");
+      if (!roster.length) { list.innerHTML = ""; empty.style.display = ""; return; }
+      empty.style.display = "none";
+      list.innerHTML = roster.map(p =>
+        '<div class="roster-item">' +
+        '<div class="player-number" style="min-width:40px;height:40px;font-size:0.9rem;">#' + esc(p.number) + '</div>' +
+        '<div class="player-details">' +
+        '<div class="player-name-text" style="font-size:0.95rem;">' + esc(p.name) + '</div>' +
+        '<div class="player-meta">' + esc(p.grade) + ' &middot; ' + esc(p.height) + ' &middot; ' + esc(p.weight) + '</div>' +
+        '</div>' +
+        '<button class="edit-btn" onclick="editPlayer(\'' + esc(p.id) + '\')" title="Edit">&#9998;</button>' +
+        '<button class="del-btn" onclick="deletePlayer(\'' + esc(p.id) + '\')" title="Delete">&times;</button>' +
+        '</div>'
+      ).join("");
+    }
+
+    /* --- Status --- */
+    function updateStatus() {
+      const b = document.getElementById("statusBadge");
+      b.textContent = connected ? "Connected" : "Offline";
+      b.className = "status " + (connected ? "connected" : "offline");
+    }
+
+    function updateVisBtn() {
+      /* visual feedback could go here */
+    }
+
+    /* --- Style settings --- */
+    const STYLE_FIELDS = [
+      { key: 'name', label: 'Name' },
+      { key: 'number', label: 'Number' },
+      { key: 'grade', label: 'Grade' },
+      { key: 'height', label: 'Height' },
+      { key: 'weight', label: 'Weight' },
+    ];
+
+
+    function renderStylePanel() {
+      const container = document.getElementById('styleFields');
+      container.innerHTML = STYLE_FIELDS.map(f => {
+        const s = currentStyles[f.key] || {};
+        const visible = !s.hidden;
+        const fontSize = s.fontSize || '';
+        const color = s.color || '#e8eaf2';
+        const offsetX = s.offsetX || 0;
+        const offsetY = s.offsetY || 0;
+        return '<div class="style-field">' +
+          '<div class="style-field-header">' +
+          '<h4>' + esc(f.label) + '</h4>' +
+          '<label class="toggle"><input type="checkbox" data-field="' + f.key + '" data-prop="visible" ' + (visible ? 'checked' : '') + ' /><span class="slider"></span></label>' +
+          '</div>' +
+          '<div class="style-controls">' +
+          '<div><label>Font Size (px)</label><input type="number" data-field="' + f.key + '" data-prop="fontSize" value="' + fontSize + '" placeholder="Default" min="8" max="120" /></div>' +
+          '<div><label>Color</label><input type="color" data-field="' + f.key + '" data-prop="color" value="' + color + '" /></div>' +
+          '<div><label>Offset X (px)</label><input type="number" data-field="' + f.key + '" data-prop="offsetX" value="' + offsetX + '" /></div>' +
+          '<div><label>Offset Y (px)</label><input type="number" data-field="' + f.key + '" data-prop="offsetY" value="' + offsetY + '" /></div>' +
+          '</div></div>';
+      }).join('');
+    }
+
+    window.saveStyles = function() {
+      const styles = {};
+      STYLE_FIELDS.forEach(f => {
+        const vis = document.querySelector('[data-field="' + f.key + '"][data-prop="visible"]');
+        const fs = document.querySelector('[data-field="' + f.key + '"][data-prop="fontSize"]');
+        const col = document.querySelector('[data-field="' + f.key + '"][data-prop="color"]');
+        const ox = document.querySelector('[data-field="' + f.key + '"][data-prop="offsetX"]');
+        const oy = document.querySelector('[data-field="' + f.key + '"][data-prop="offsetY"]');
+        styles[f.key] = {
+          hidden: vis ? !vis.checked : false,
+          fontSize: fs && fs.value ? parseInt(fs.value) : null,
+          color: col ? col.value : null,
+          offsetX: ox && ox.value ? parseInt(ox.value) : 0,
+          offsetY: oy && oy.value ? parseInt(oy.value) : 0,
+        };
+      });
+      currentStyles = styles;
+      setDoc(liveRef, { styles }, { merge: true }).then(() => {
+        showToast('Styles applied');
+      }).catch(() => showToast('Error saving styles'));
+    };
+
+    /* --- Video file picker from GitHub repo --- */
+    const REPO_OWNER = "BGSNvp";
+    const REPO_NAME = "Player-overlay";
+    const VIDEO_FOLDER = "videos";
+    const VIDEO_EXTS = [".mp4", ".webm", ".mov"];
+    let videoFiles = [];
+
+    async function fetchVideoFiles() {
+      try {
+        const resp = await fetch("https://api.github.com/repos/" + REPO_OWNER + "/" + REPO_NAME + "/contents/" + VIDEO_FOLDER);
+        if (!resp.ok) return [];
+        const files = await resp.json();
+        return files
+          .filter(f => f.type === "file" && VIDEO_EXTS.some(ext => f.name.toLowerCase().endsWith(ext)))
+          .map(f => ({ name: f.name, url: f.download_url }));
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function populateVideoSelect(files) {
+      const sel = document.getElementById("fVideoSelect");
+      sel.innerHTML = '<option value="">-- Select from repo (' + files.length + ' videos) --</option>';
+      files.forEach(f => {
+        sel.innerHTML += '<option value="' + esc(f.url) + '">' + esc(f.name) + '</option>';
+      });
+      if (!files.length) {
+        sel.innerHTML = '<option value="">No videos in /' + VIDEO_FOLDER + '/ yet</option>';
+      }
+    }
+
+    window.onVideoSelect = function() {
+      const sel = document.getElementById("fVideoSelect");
+      if (sel.value) {
+        document.getElementById("fVideo").value = sel.value;
+      }
+    };
+
+    window.refreshVideoList = function() {
+      showToast("Fetching videos...");
+      fetchVideoFiles().then(files => {
+        videoFiles = files;
+        populateVideoSelect(files);
+        showToast(files.length + " video(s) found");
+      });
+    };
+
+    // Fetch video list on load
+    fetchVideoFiles().then(files => {
+      videoFiles = files;
+      populateVideoSelect(files);
+    });
+
+    /* --- Helpers --- */
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("visible");
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove("visible"), 1800);
+    }
+
+    function esc(s) {
+      const d = document.createElement("div");
+      d.textContent = s || "";
+      return d.innerHTML;
+    }
+
+    function slugify(s) {
+      return (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    }
+  </script>
+</body>
+</html>
