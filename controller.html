@@ -109,6 +109,21 @@
     .style-controls input[type="color"] { width: 100%; height: 32px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); cursor: pointer; padding: 2px; }
     .style-controls .full-width { grid-column: 1 / -1; }
     .btn-save-styles { width: 100%; margin-top: 16px; }
+
+    /* Portrait phone optimizations */
+    @media (max-width: 420px) {
+      body { padding: 12px; padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+      .header h1 { font-size: 1.1rem; }
+      .tabs { gap: 4px; }
+      .tab { padding: 8px 4px; font-size: 0.75rem; }
+      .form-row { flex-direction: column; gap: 0; }
+      .style-controls { grid-template-columns: 1fr; }
+      .player-btn { padding: 12px; gap: 10px; }
+      .player-number { min-width: 42px; height: 42px; font-size: 1rem; }
+      .style-field { padding: 10px; }
+      .bottom-bar { padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+      .bottom-bar button { padding: 12px; font-size: 0.85rem; }
+    }
   </style>
 </head>
 <body>
@@ -161,8 +176,14 @@
         </div>
       </div>
       <div class="form-group">
-        <label>Video URL</label>
-        <input type="text" id="fVideo" placeholder="https://... (optional)" />
+        <label>Video</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="fVideoSelect" onchange="onVideoSelect()" style="flex:1;padding:10px 12px;border:2px solid var(--border);border-radius:10px;background:var(--bg-elev);color:var(--text);font:inherit;font-size:0.95rem;">
+            <option value="">-- Select from repo --</option>
+          </select>
+          <button type="button" class="btn btn-outline" onclick="refreshVideoList()" style="padding:10px 12px;font-size:0.8rem;">&#8635;</button>
+        </div>
+        <input type="text" id="fVideo" placeholder="Or paste a URL manually" style="margin-top:6px;" />
       </div>
       <div class="btn-row">
         <button type="submit" class="btn btn-accent" id="saveBtn">Add Player</button>
@@ -423,6 +444,59 @@
         showToast('Styles applied');
       }).catch(() => showToast('Error saving styles'));
     };
+
+    /* --- Video file picker from GitHub repo --- */
+    const REPO_OWNER = "BGSNvp";
+    const REPO_NAME = "Player-overlay";
+    const VIDEO_FOLDER = "videos";
+    const VIDEO_EXTS = [".mp4", ".webm", ".mov"];
+    let videoFiles = [];
+
+    async function fetchVideoFiles() {
+      try {
+        const resp = await fetch("https://api.github.com/repos/" + REPO_OWNER + "/" + REPO_NAME + "/contents/" + VIDEO_FOLDER);
+        if (!resp.ok) return [];
+        const files = await resp.json();
+        return files
+          .filter(f => f.type === "file" && VIDEO_EXTS.some(ext => f.name.toLowerCase().endsWith(ext)))
+          .map(f => ({ name: f.name, url: f.download_url }));
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function populateVideoSelect(files) {
+      const sel = document.getElementById("fVideoSelect");
+      sel.innerHTML = '<option value="">-- Select from repo (' + files.length + ' videos) --</option>';
+      files.forEach(f => {
+        sel.innerHTML += '<option value="' + esc(f.url) + '">' + esc(f.name) + '</option>';
+      });
+      if (!files.length) {
+        sel.innerHTML = '<option value="">No videos in /' + VIDEO_FOLDER + '/ yet</option>';
+      }
+    }
+
+    window.onVideoSelect = function() {
+      const sel = document.getElementById("fVideoSelect");
+      if (sel.value) {
+        document.getElementById("fVideo").value = sel.value;
+      }
+    };
+
+    window.refreshVideoList = function() {
+      showToast("Fetching videos...");
+      fetchVideoFiles().then(files => {
+        videoFiles = files;
+        populateVideoSelect(files);
+        showToast(files.length + " video(s) found");
+      });
+    };
+
+    // Fetch video list on load
+    fetchVideoFiles().then(files => {
+      videoFiles = files;
+      populateVideoSelect(files);
+    });
 
     /* --- Helpers --- */
     function showToast(msg) {
