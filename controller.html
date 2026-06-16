@@ -92,6 +92,23 @@
 
     .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px); background: var(--bg-elev-2); color: var(--text); padding: 10px 20px; border-radius: 10px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 4px 20px rgba(0,0,0,0.4); opacity: 0; transition: transform 0.3s, opacity 0.3s; pointer-events: none; z-index: 100; }
     .toast.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* Style panel */
+    .style-field { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .style-field-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .style-field-header h4 { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .toggle { position: relative; width: 44px; height: 24px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle .slider { position: absolute; inset: 0; background: var(--border); border-radius: 12px; cursor: pointer; transition: background 0.2s; }
+    .toggle .slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+    .toggle input:checked + .slider { background: var(--accent); }
+    .toggle input:checked + .slider::before { transform: translateX(20px); }
+    .style-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .style-controls label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); display: block; margin-bottom: 2px; }
+    .style-controls input[type="number"] { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; font-size: 0.85rem; }
+    .style-controls input[type="color"] { width: 100%; height: 32px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); cursor: pointer; padding: 2px; }
+    .style-controls .full-width { grid-column: 1 / -1; }
+    .btn-save-styles { width: 100%; margin-top: 16px; }
   </style>
 </head>
 <body>
@@ -103,6 +120,7 @@
   <div class="tabs">
     <button class="tab active" onclick="switchTab('select')">Select</button>
     <button class="tab" onclick="switchTab('manage')">Manage Roster</button>
+    <button class="tab" onclick="switchTab('style')">Style</button>
   </div>
 
   <!-- SELECT tab -->
@@ -153,6 +171,12 @@
     </form>
   </div>
 
+  <!-- STYLE tab -->
+  <div id="panelStyle" class="panel">
+    <div id="styleFields"></div>
+    <button class="btn btn-accent btn-save-styles" onclick="saveStyles()">Apply Styles</button>
+  </div>
+
   <div class="bottom-bar">
     <button class="btn-show" onclick="showOverlay()">Show</button>
     <button class="btn-hide" onclick="hideOverlay()">Hide</button>
@@ -180,6 +204,7 @@
     let activeId = "";
     let overlayVisible = false;
     let connected = false;
+    let currentStyles = {};
 
     /* --- Sync roster from Firestore --- */
     onSnapshot(rosterRef, (snap) => {
@@ -200,6 +225,7 @@
       if (!d) return;
       activeId = d.id || "";
       overlayVisible = !!d.visible;
+      if (d.styles) currentStyles = d.styles;
       renderSelectList();
       updateVisBtn();
     });
@@ -210,7 +236,7 @@
       if (!p) return;
       activeId = id;
       overlayVisible = true;
-      setDoc(liveRef, { ...p, visible: true }).then(() => {
+      setDoc(liveRef, { ...p, visible: true, styles: currentStyles }).then(() => {
         showToast(p.name + " selected");
       }).catch(() => showToast("Error updating"));
     };
@@ -289,9 +315,12 @@
 
     /* --- Tabs --- */
     window.switchTab = function(tab) {
-      document.querySelectorAll(".tab").forEach((t, i) => t.classList.toggle("active", i === (tab === "select" ? 0 : 1)));
+      const tabs = ['select', 'manage', 'style'];
+      document.querySelectorAll(".tab").forEach((t, i) => t.classList.toggle("active", tabs[i] === tab));
       document.getElementById("panelSelect").classList.toggle("active", tab === "select");
       document.getElementById("panelManage").classList.toggle("active", tab === "manage");
+      document.getElementById("panelStyle").classList.toggle("active", tab === "style");
+      if (tab === "style") renderStylePanel();
     };
 
     /* --- Render select list --- */
@@ -339,6 +368,61 @@
     function updateVisBtn() {
       /* visual feedback could go here */
     }
+
+    /* --- Style settings --- */
+    const STYLE_FIELDS = [
+      { key: 'name', label: 'Name' },
+      { key: 'number', label: 'Number' },
+      { key: 'grade', label: 'Grade' },
+      { key: 'height', label: 'Height' },
+      { key: 'weight', label: 'Weight' },
+    ];
+
+
+    function renderStylePanel() {
+      const container = document.getElementById('styleFields');
+      container.innerHTML = STYLE_FIELDS.map(f => {
+        const s = currentStyles[f.key] || {};
+        const visible = !s.hidden;
+        const fontSize = s.fontSize || '';
+        const color = s.color || '#e8eaf2';
+        const offsetX = s.offsetX || 0;
+        const offsetY = s.offsetY || 0;
+        return '<div class="style-field">' +
+          '<div class="style-field-header">' +
+          '<h4>' + esc(f.label) + '</h4>' +
+          '<label class="toggle"><input type="checkbox" data-field="' + f.key + '" data-prop="visible" ' + (visible ? 'checked' : '') + ' /><span class="slider"></span></label>' +
+          '</div>' +
+          '<div class="style-controls">' +
+          '<div><label>Font Size (px)</label><input type="number" data-field="' + f.key + '" data-prop="fontSize" value="' + fontSize + '" placeholder="Default" min="8" max="120" /></div>' +
+          '<div><label>Color</label><input type="color" data-field="' + f.key + '" data-prop="color" value="' + color + '" /></div>' +
+          '<div><label>Offset X (px)</label><input type="number" data-field="' + f.key + '" data-prop="offsetX" value="' + offsetX + '" /></div>' +
+          '<div><label>Offset Y (px)</label><input type="number" data-field="' + f.key + '" data-prop="offsetY" value="' + offsetY + '" /></div>' +
+          '</div></div>';
+      }).join('');
+    }
+
+    window.saveStyles = function() {
+      const styles = {};
+      STYLE_FIELDS.forEach(f => {
+        const vis = document.querySelector('[data-field="' + f.key + '"][data-prop="visible"]');
+        const fs = document.querySelector('[data-field="' + f.key + '"][data-prop="fontSize"]');
+        const col = document.querySelector('[data-field="' + f.key + '"][data-prop="color"]');
+        const ox = document.querySelector('[data-field="' + f.key + '"][data-prop="offsetX"]');
+        const oy = document.querySelector('[data-field="' + f.key + '"][data-prop="offsetY"]');
+        styles[f.key] = {
+          hidden: vis ? !vis.checked : false,
+          fontSize: fs && fs.value ? parseInt(fs.value) : null,
+          color: col ? col.value : null,
+          offsetX: ox && ox.value ? parseInt(ox.value) : 0,
+          offsetY: oy && oy.value ? parseInt(oy.value) : 0,
+        };
+      });
+      currentStyles = styles;
+      setDoc(liveRef, { styles }, { merge: true }).then(() => {
+        showToast('Styles applied');
+      }).catch(() => showToast('Error saving styles'));
+    };
 
     /* --- Helpers --- */
     function showToast(msg) {

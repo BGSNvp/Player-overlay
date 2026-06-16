@@ -11,7 +11,7 @@
 
     <!-- Video panel -->
     <div class="card-video" id="videoWrap">
-      <video id="playerVideo" autoplay loop muted playsinline></video>
+      <video id="playerVideo" autoplay muted playsinline></video>
       <div class="number-badge" id="playerNumber"></div>
     </div>
 
@@ -75,6 +75,9 @@
 
       updateVideo(d.video || "");
 
+      /* --- Apply field style settings --- */
+      applyFieldStyles(d.styles || {});
+
       if (d.visible && !isVisible) {
         showCard();
       } else if (!d.visible && isVisible) {
@@ -91,7 +94,6 @@
           const v = document.createElement("video");
           v.id = "playerVideo";
           v.autoplay = true;
-          v.loop = true;
           v.muted = true;
           v.playsInline = true;
           wrap.prepend(v);
@@ -130,6 +132,58 @@
     function setText(id, value) {
       const el = document.getElementById(id);
       if (el) el.textContent = value;
+    }
+
+    /* --- Field style customization --- */
+    const FIELD_MAP = {
+      name: { el: "playerName", wrap: null },
+      number: { el: "playerNumber", wrap: null },
+      grade: { el: "playerGrade", wrap: ".stat:nth-child(1)" },
+      height: { el: "playerHeight", wrap: ".stat:nth-child(2)" },
+      weight: { el: "playerWeight", wrap: ".stat:nth-child(3)" },
+    };
+
+    function applyFieldStyles(styles) {
+      Object.keys(FIELD_MAP).forEach(field => {
+        const conf = styles[field] || {};
+        const elId = FIELD_MAP[field].el;
+        const el = document.getElementById(elId);
+        const wrapSel = FIELD_MAP[field].wrap;
+        const wrap = wrapSel ? card.querySelector(wrapSel) : el;
+        if (!el || !wrap) return;
+
+        // Visibility toggle
+        if (conf.hidden) {
+          wrap.style.display = "none";
+        } else {
+          wrap.style.display = "";
+        }
+
+        // Font size
+        if (conf.fontSize) {
+          el.style.fontSize = conf.fontSize + "px";
+        } else {
+          el.style.fontSize = "";
+        }
+
+        // Font color
+        if (conf.color) {
+          el.style.color = conf.color;
+        } else {
+          el.style.color = "";
+        }
+
+        // Position offset (relative adjustment)
+        if (conf.offsetX || conf.offsetY) {
+          wrap.style.position = "relative";
+          wrap.style.left = (conf.offsetX || 0) + "px";
+          wrap.style.top = (conf.offsetY || 0) + "px";
+        } else {
+          wrap.style.position = "";
+          wrap.style.left = "";
+          wrap.style.top = "";
+        }
+      });
     }
   </script>
 </body>
