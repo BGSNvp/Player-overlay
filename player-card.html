@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Player Card Overlay</title>
+  <link rel="stylesheet" href="player-card.css" />
+</head>
+<body>
+  <!-- The card slides in from the left when the page loads -->
+  <div id="playerCard" class="player-card">
+
+    <!-- Video panel -->
+    <div class="card-video">
+      <video id="playerVideo" autoplay loop muted playsinline></video>
+      <div class="number-badge" id="playerNumber"></div>
+    </div>
+
+    <!-- Info panel -->
+    <div class="card-info">
+      <div class="player-name" id="playerName"></div>
+      <div class="stat-grid">
+        <div class="stat">
+          <span class="stat-label">Grade</span>
+          <span class="stat-value" id="playerGrade"></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Height</span>
+          <span class="stat-value" id="playerHeight"></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Weight</span>
+          <span class="stat-value" id="playerWeight"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accent stripe along the bottom -->
+    <div class="card-stripe"></div>
+  </div>
+
+  <script src="player-card.js"></script>
+</body>
+</html>

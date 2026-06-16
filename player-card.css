@@ -1,0 +1,176 @@
+/* ============================================================
+   Player Card Overlay  –  broadcast-style lower-third card
+   Designed for use as an OBS Browser Source (transparent bg).
+   ============================================================ */
+
+/* ---------- Reset & transparent page ---------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: transparent;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ---------- Card container ---------- */
+.player-card {
+  --accent: #6c8cff;
+  --accent-glow: rgba(108, 140, 255, 0.35);
+  --card-bg: rgba(15, 18, 32, 0.92);
+  --text: #e8eaf2;
+  --muted: #9aa0b5;
+  --stripe-h: 5px;
+
+  position: fixed;
+  bottom: 60px;
+  left: 40px;
+  display: flex;
+  align-items: stretch;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(108, 140, 255, 0.18);
+
+  /* Slide-in animation */
+  animation: slideIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ---------- Video panel ---------- */
+.card-video {
+  position: relative;
+  width: 220px;
+  min-height: 280px;
+  background: #0a0d1a;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.card-video video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Jersey number badge */
+.number-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 6px 14px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px var(--accent-glow);
+  letter-spacing: 1px;
+}
+
+/* ---------- Info panel ---------- */
+.card-info {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 28px 36px;
+  min-width: 260px;
+}
+
+.player-name {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.15;
+  letter-spacing: 0.5px;
+  margin-bottom: 18px;
+  text-transform: uppercase;
+}
+
+/* ---------- Stat grid ---------- */
+.stat-grid {
+  display: flex;
+  gap: 28px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+}
+
+.stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ---------- Bottom accent stripe ---------- */
+.card-stripe {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--stripe-h);
+  background: linear-gradient(90deg, var(--accent) 0%, #44d29a 100%);
+}
+
+/* ---------- Slide-in animation ---------- */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-60px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* ---------- Hidden state (for JS-triggered dismiss) ---------- */
+.player-card.hidden {
+  animation: slideOut 0.45s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-60px) scale(0.96);
+  }
+}
+
+/* ---------- Fallback when no video is provided ---------- */
+.card-video.no-video {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-video.no-video::after {
+  content: "No video";
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ---------- Demo background (visible only when NOT in OBS) ---------- */
+body.demo {
+  background: linear-gradient(135deg, #1a1e30 0%, #0f1220 100%);
+}
