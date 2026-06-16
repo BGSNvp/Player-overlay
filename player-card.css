@@ -17,11 +17,11 @@ html, body {
 
 /* ---------- Main container ---------- */
 .player-card {
-  --accent: #6c8cff;
-  --accent-glow: rgba(108, 140, 255, 0.35);
-  --text: #e8eaf2;
+  --accent: #C5B358;
+  --accent-glow: rgba(197, 179, 88, 0.35);
+  --text: #C5B358;
   --muted: #9aa0b5;
-  --field-bg: rgba(15, 18, 32, 0.75);
+  --field-bg: rgba(0, 22, 44, 0.92);
 
   position: fixed;
   bottom: 40px;
@@ -60,8 +60,8 @@ html, body {
 
 /* Number badge */
 .number-badge {
-  background: var(--accent);
-  color: #fff;
+  background: var(--field-bg);
+  color: var(--accent);
   font-size: 2.2rem;
   font-weight: 800;
   line-height: 1;
