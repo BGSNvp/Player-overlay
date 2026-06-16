@@ -1,82 +1,46 @@
 # Player Card Overlay
 
-A broadcast-style web overlay that displays a player card with a looping video, name, jersey number, grade, height, and weight. Comes with a **mobile controller** so you can select the active player from your phone during a broadcast.
+A broadcast-style web overlay that displays a player card with a looping video, name, jersey number, grade, height, and weight. Comes with a **mobile controller** to select the active player from your phone during a broadcast. Uses **Firebase Firestore** for real-time sync — same setup as the BGSN scoreboard.
 
 ## How It Works
 
 - **`player-card.html`** — the overlay (add as an OBS Browser Source)
-- **`controller.html`** — mobile-friendly page to select players (open on your phone)
-- **`server.js`** — tiny Node.js relay that syncs the controller → overlay in real-time
-- **`roster.json`** — your team's player data
+- **`controller.html`** — mobile-friendly page to select/manage players (open on your phone)
+- **`player-card.css`** — overlay styles
 
-Same pattern as a scoreboard overlay + controller — your phone talks to the server, the server pushes updates to the OBS overlay instantly.
+The controller writes to Firestore, the overlay listens with `onSnapshot` — instant updates over the internet, no local server needed.
 
 ## Quick Start
 
-1. **Edit `roster.json`** with your players' info (name, number, grade, height, weight, video path).
+1. **Host the files** — GitHub Pages, Netlify, or any static host.
 
-2. **Start the server** on your streaming PC:
-   ```bash
-   node server.js
-   ```
+2. **Open the controller** on your phone and add your players via the **Manage Roster** tab.
 
 3. **Add the overlay in OBS:**
    - Add a **Browser Source**
-   - URL: `http://localhost:3000/player-card.html`
+   - URL: `https://<your-host>/player-card.html`
    - Width: `1920`, Height: `1080`
    - Check **"Shutdown source when not visible"**
 
-4. **Open the controller on your phone:**
-   - Go to `http://<your-pc-ip>:3000` on your phone (same Wi-Fi)
+4. **During the broadcast**, open the controller on your phone:
    - Tap a player to show their card on stream
-   - Use the **Show** / **Hide** buttons to toggle the overlay
+   - Use **Show** / **Hide** to toggle the overlay
 
-## roster.json Format
+## Controller Features
 
-```json
-[
-  {
-    "id": "john-smith",
-    "name": "John Smith",
-    "number": "23",
-    "grade": "Junior",
-    "height": "6'2\"",
-    "weight": "185 lbs",
-    "video": "videos/john-smith.mp4"
-  }
-]
-```
+- **Select tab** — tap a player to push them live on the overlay
+- **Manage Roster tab** — add, edit, and delete players
+- **Show / Hide buttons** — toggle overlay visibility without changing the player
+- Roster is stored in Firestore — persists across devices and sessions
 
-- `id` — unique identifier (used internally)
-- `video` — path to a short looping clip (mp4/webm), or empty string for no video
+## Firebase
 
-## Player Videos
-
-Put short video clips (2–5 seconds, looping) in a `videos/` folder. Reference them in `roster.json`. The video plays on a loop in the left panel of the card.
-
-## Standalone Mode (no server)
-
-The overlay also works as a plain static file with URL query parameters — useful for a quick one-off without the controller:
-
-```
-player-card.html?name=John+Smith&number=23&grade=Junior&height=6'2"&weight=185+lbs&video=videos/john.mp4&demo=1
-```
-
-## URL Parameters
-
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `name` | Player's full name | `John+Smith` |
-| `number` | Jersey number | `23` |
-| `grade` | Grade / year | `Junior` |
-| `height` | Height | `6'2"` |
-| `weight` | Weight | `185+lbs` |
-| `video` | Path to video (mp4/webm) | `videos/john.mp4` |
-| `accent` | Hex accent color (no `#`) | `ff5722` |
-| `demo` | `1` = dark bg for previewing outside OBS | `1` |
+Uses the same Firebase project as the BGSN scoreboard (`bgsn-scoreboard`). Data is stored in the `playerOverlay` collection:
+- `playerOverlay/live` — currently displayed player + visibility
+- `playerOverlay/roster` — full player list
 
 ## Customization
 
-- **Accent color** — set `accent` URL param, or edit `--accent` in `player-card.css`
-- **Layout / fonts** — edit `player-card.css`
-- **Animation** — the card slides in from the left; timing is in `player-card.css`
+- **Accent color** — add `?accent=ff5722` to the overlay URL, or edit `--accent` in `player-card.css`
+- **Demo mode** — add `?demo=1` to the overlay URL to see a dark background for previewing outside OBS
+- **Layout / fonts / animation** — edit `player-card.css`
