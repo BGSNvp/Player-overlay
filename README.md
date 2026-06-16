@@ -1,69 +1,82 @@
 # Player Card Overlay
 
-A broadcast-style web overlay that displays a player card with a looping video, name, jersey number, grade, height, and weight. Designed for use as an **OBS Browser Source** (transparent background) during livestreams.
+A broadcast-style web overlay that displays a player card with a looping video, name, jersey number, grade, height, and weight. Comes with a **mobile controller** so you can select the active player from your phone during a broadcast.
 
-![preview](https://github.com/user-attachments/assets/placeholder)
+## How It Works
 
-## Features
+- **`player-card.html`** — the overlay (add as an OBS Browser Source)
+- **`controller.html`** — mobile-friendly page to select players (open on your phone)
+- **`server.js`** — tiny Node.js relay that syncs the controller → overlay in real-time
+- **`roster.json`** — your team's player data
 
-- **Looping video** of the player (left panel)
-- **Jersey number badge** overlaid on the video
-- **Player stats** — name, grade, height, weight
-- **Transparent background** — composites cleanly in OBS
-- **Slide-in animation** on load
-- **URL query-param driven** — swap players by changing the URL, no code edits needed
-- **Custom accent color** — match your school/team colors
-- **No build step** — plain HTML / CSS / JS
+Same pattern as a scoreboard overlay + controller — your phone talks to the server, the server pushes updates to the OBS overlay instantly.
 
 ## Quick Start
 
-Serve the files with any static server:
+1. **Edit `roster.json`** with your players' info (name, number, grade, height, weight, video path).
 
-```bash
-# Python
-python3 -m http.server 8000
+2. **Start the server** on your streaming PC:
+   ```bash
+   node server.js
+   ```
 
-# or Node
-npx serve .
+3. **Add the overlay in OBS:**
+   - Add a **Browser Source**
+   - URL: `http://localhost:3000/player-card.html`
+   - Width: `1920`, Height: `1080`
+   - Check **"Shutdown source when not visible"**
+
+4. **Open the controller on your phone:**
+   - Go to `http://<your-pc-ip>:3000` on your phone (same Wi-Fi)
+   - Tap a player to show their card on stream
+   - Use the **Show** / **Hide** buttons to toggle the overlay
+
+## roster.json Format
+
+```json
+[
+  {
+    "id": "john-smith",
+    "name": "John Smith",
+    "number": "23",
+    "grade": "Junior",
+    "height": "6'2\"",
+    "weight": "185 lbs",
+    "video": "videos/john-smith.mp4"
+  }
+]
 ```
 
-Open in a browser:
+- `id` — unique identifier (used internally)
+- `video` — path to a short looping clip (mp4/webm), or empty string for no video
+
+## Player Videos
+
+Put short video clips (2–5 seconds, looping) in a `videos/` folder. Reference them in `roster.json`. The video plays on a loop in the left panel of the card.
+
+## Standalone Mode (no server)
+
+The overlay also works as a plain static file with URL query parameters — useful for a quick one-off without the controller:
 
 ```
-http://localhost:8000/player-card.html?name=Marcus+Johnson&number=23&grade=Junior&height=6'2"&weight=185+lbs&video=clips/marcus.mp4&demo=1
+player-card.html?name=John+Smith&number=23&grade=Junior&height=6'2"&weight=185+lbs&video=videos/john.mp4&demo=1
 ```
 
 ## URL Parameters
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
-| `name` | Player's full name | `Marcus+Johnson` |
+| `name` | Player's full name | `John+Smith` |
 | `number` | Jersey number | `23` |
 | `grade` | Grade / year | `Junior` |
 | `height` | Height | `6'2"` |
 | `weight` | Weight | `185+lbs` |
-| `video` | URL or path to a short video (mp4 / webm) | `clips/marcus.mp4` |
-| `accent` | Hex accent color (without `#`) | `ff5722` |
-| `demo` | Set to `1` to show a dark background for previewing outside OBS | `1` |
-
-## OBS Setup
-
-1. **Host the files** — GitHub Pages, Netlify, or any static host. Or run a local server on your streaming PC.
-2. **Add a Browser Source** in OBS.
-3. Set the **URL** to your hosted `player-card.html` with the appropriate query params for the player.
-4. Set the **Width** to `1920` and **Height** to `1080` (or match your canvas).
-5. Make sure **"Shutdown source when not visible"** is checked so the slide-in animation replays each time you show the source.
-
-To switch players, just update the URL in the Browser Source properties.
-
-## Hosting on GitHub Pages
-
-1. Push this repo to GitHub.
-2. Go to **Settings → Pages** and set the source to the `main` branch.
-3. Your overlay will be live at `https://<username>.github.io/player-overlay/player-card.html?name=...`
+| `video` | Path to video (mp4/webm) | `videos/john.mp4` |
+| `accent` | Hex accent color (no `#`) | `ff5722` |
+| `demo` | `1` = dark bg for previewing outside OBS | `1` |
 
 ## Customization
 
-- Edit `player-card.css` to change fonts, sizes, card layout, or animation timing.
-- The `--accent` CSS variable controls the highlight color (label text, number badge, gradient stripe). Override it with the `accent` URL param or in CSS.
-- Add a `.hidden` class to `#playerCard` via JavaScript to trigger the slide-out animation for dismissing the card.
+- **Accent color** — set `accent` URL param, or edit `--accent` in `player-card.css`
+- **Layout / fonts** — edit `player-card.css`
+- **Animation** — the card slides in from the left; timing is in `player-card.css`

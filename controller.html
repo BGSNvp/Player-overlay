@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Player Controller</title>
+  <style>
+    :root {
+      --bg: #0f1220;
+      --bg-elev: #171b2e;
+      --bg-elev-2: #1f2540;
+      --text: #e8eaf2;
+      --muted: #9aa0b5;
+      --accent: #6c8cff;
+      --accent-glow: rgba(108, 140, 255, 0.25);
+      --danger: #ff5c72;
+      --success: #44d29a;
+      --border: #2a3050;
+      --radius: 14px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      min-height: 100vh;
+    }
+
+    body { padding: 16px; padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+
+    /* --- Header --- */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .header h1 { font-size: 1.3rem; font-weight: 700; }
+    .status {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .status.live { background: var(--success); color: #0a0d1a; }
+    .status.hidden { background: var(--border); color: var(--muted); }
+
+    /* --- Player list --- */
+    .player-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .player-btn {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--bg-elev);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      color: var(--text);
+      font: inherit;
+      font-size: 1rem;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+    .player-btn:active { background: var(--bg-elev-2); }
+    .player-btn.active {
+      border-color: var(--accent);
+      background: var(--bg-elev-2);
+      box-shadow: 0 0 0 1px var(--accent), 0 2px 12px var(--accent-glow);
+    }
+
+    .player-number {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.1rem;
+      min-width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+    .player-btn.active .player-number {
+      background: var(--accent);
+    }
+
+    .player-details { flex: 1; min-width: 0; }
+    .player-name-text {
+      font-weight: 700;
+      font-size: 1.05rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .player-meta {
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-top: 2px;
+    }
+
+    /* --- Bottom bar --- */
+    .bottom-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(15, 18, 32, 0.95);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--border);
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      display: flex;
+      gap: 10px;
+    }
+
+    .bottom-bar button {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .bottom-bar button:active { opacity: 0.7; }
+
+    .btn-show { background: var(--success); color: #0a0d1a; }
+    .btn-hide { background: var(--danger); color: #fff; }
+
+    /* --- Toast --- */
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-80px);
+      background: var(--bg-elev-2);
+      color: var(--text);
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      opacity: 0;
+      transition: transform 0.3s, opacity 0.3s;
+      pointer-events: none;
+      z-index: 100;
+    }
+    .toast.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Player Overlay</h1>
+    <span id="statusBadge" class="status hidden">Hidden</span>
+  </div>
+
+  <div id="playerList" class="player-list"></div>
+
+  <div class="bottom-bar">
+    <button class="btn-show" id="showBtn" onclick="showOverlay()">Show</button>
+    <button class="btn-hide" id="hideBtn" onclick="hideOverlay()">Hide</button>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    "use strict";
+
+    let roster = [];
+    let activeId = null;
+    let visible = false;
+
+    /* --- Load roster --- */
+    fetch("roster.json")
+      .then((r) => r.json())
+      .then((data) => {
+        roster = data;
+        renderList();
+      })
+      .catch(() => showToast("Failed to load roster.json"));
+
+    /* --- Render player list --- */
+    function renderList() {
+      const list = document.getElementById("playerList");
+      list.innerHTML = roster
+        .map(
+          (p) =>
+            '<button class="player-btn' + (p.id === activeId ? " active" : "") +
+            '" data-id="' + p.id + '" onclick="selectPlayer(\'' + p.id + '\')">' +
+            '<div class="player-number">#' + esc(p.number) + "</div>" +
+            '<div class="player-details">' +
+            '<div class="player-name-text">' + esc(p.name) + "</div>" +
+            '<div class="player-meta">' + esc(p.grade) + " &middot; " + esc(p.height) + " &middot; " + esc(p.weight) + "</div>" +
+            "</div></button>"
+        )
+        .join("");
+    }
+
+    /* --- Select a player --- */
+    function selectPlayer(id) {
+      const player = roster.find((p) => p.id === id);
+      if (!player) return;
+      activeId = id;
+      renderList();
+      fetch("/api/select", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(player),
+      })
+        .then(() => {
+          visible = true;
+          updateStatus();
+          showToast(player.name + " selected");
+        })
+        .catch(() => showToast("Connection error"));
+    }
+
+    /* --- Show / Hide --- */
+    function showOverlay() {
+      fetch("/api/show", { method: "POST" })
+        .then(() => { visible = true; updateStatus(); })
+        .catch(() => showToast("Connection error"));
+    }
+
+    function hideOverlay() {
+      fetch("/api/hide", { method: "POST" })
+        .then(() => { visible = false; updateStatus(); })
+        .catch(() => showToast("Connection error"));
+    }
+
+    /* --- Status badge --- */
+    function updateStatus() {
+      var badge = document.getElementById("statusBadge");
+      badge.textContent = visible ? "Live" : "Hidden";
+      badge.className = "status " + (visible ? "live" : "hidden");
+    }
+
+    /* --- Toast --- */
+    function showToast(msg) {
+      var el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("visible");
+      clearTimeout(el._timer);
+      el._timer = setTimeout(function () { el.classList.remove("visible"); }, 1800);
+    }
+
+    /* --- Helpers --- */
+    function esc(str) {
+      var d = document.createElement("div");
+      d.textContent = str || "";
+      return d.innerHTML;
+    }
+  </script>
+</body>
+</html>
