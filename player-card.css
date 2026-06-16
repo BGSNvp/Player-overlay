@@ -1,5 +1,6 @@
 /* ============================================================
-   Player Card Overlay  –  broadcast-style lower-third card
+   Player Card Overlay  –  vertical green-screen layout
+   Video is the main element; info fields float beside it.
    Designed for use as an OBS Browser Source (transparent bg).
    ============================================================ */
 
@@ -14,36 +15,32 @@ html, body {
   font-family: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* ---------- Card container ---------- */
+/* ---------- Main container ---------- */
 .player-card {
   --accent: #6c8cff;
   --accent-glow: rgba(108, 140, 255, 0.35);
-  --card-bg: rgba(15, 18, 32, 0.92);
   --text: #e8eaf2;
   --muted: #9aa0b5;
-  --stripe-h: 5px;
+  --field-bg: rgba(15, 18, 32, 0.75);
 
   position: fixed;
-  bottom: 60px;
+  bottom: 40px;
   left: 40px;
   display: flex;
-  align-items: stretch;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(108, 140, 255, 0.18);
+  align-items: flex-end;
+  gap: 16px;
 
-  /* Slide-in animation */
   animation: slideIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 /* ---------- Video panel ---------- */
 .card-video {
   position: relative;
-  width: 220px;
-  min-height: 280px;
-  background: #0a0d1a;
+  width: 240px;
+  height: 420px;
   flex-shrink: 0;
   overflow: hidden;
+  border-radius: 8px;
 }
 
 .card-video video {
@@ -53,57 +50,64 @@ html, body {
   display: block;
 }
 
-/* Jersey number badge */
-.number-badge {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 1.6rem;
-  font-weight: 800;
-  line-height: 1;
-  padding: 6px 14px;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px var(--accent-glow);
-  letter-spacing: 1px;
-}
-
-/* ---------- Info panel ---------- */
+/* ---------- Info fields (floating beside video) ---------- */
 .card-info {
-  background: var(--card-bg);
-  backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 28px 36px;
-  min-width: 260px;
+  gap: 8px;
+  padding-bottom: 8px;
 }
 
-.player-name {
-  font-size: 2rem;
+/* Number badge */
+.number-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 2.2rem;
   font-weight: 800;
+  line-height: 1;
+  padding: 10px 18px;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px var(--accent-glow);
+  letter-spacing: 1px;
+  display: inline-block;
+  width: fit-content;
+}
+
+/* Player name */
+.player-name {
+  background: var(--field-bg);
+  backdrop-filter: blur(8px);
   color: var(--text);
+  font-size: 1.8rem;
+  font-weight: 800;
   line-height: 1.15;
   letter-spacing: 0.5px;
-  margin-bottom: 18px;
   text-transform: uppercase;
+  padding: 10px 16px;
+  border-radius: 8px;
+  width: fit-content;
 }
 
 /* ---------- Stat grid ---------- */
 .stat-grid {
   display: flex;
-  gap: 28px;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .stat {
+  background: var(--field-bg);
+  backdrop-filter: blur(8px);
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  width: fit-content;
 }
 
 .stat-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -111,34 +115,24 @@ html, body {
 }
 
 .stat-value {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--text);
-}
-
-/* ---------- Bottom accent stripe ---------- */
-.card-stripe {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: var(--stripe-h);
-  background: linear-gradient(90deg, var(--accent) 0%, #44d29a 100%);
 }
 
 /* ---------- Slide-in animation ---------- */
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateX(-60px) scale(0.96);
+    transform: translateY(40px) scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translateY(0) scale(1);
   }
 }
 
-/* ---------- Hidden state (for JS-triggered dismiss) ---------- */
+/* ---------- Hidden state ---------- */
 .player-card.hidden {
   animation: slideOut 0.45s cubic-bezier(0.55, 0, 1, 0.45) forwards;
 }
@@ -146,19 +140,21 @@ html, body {
 @keyframes slideOut {
   from {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translateY(0) scale(1);
   }
   to {
     opacity: 0;
-    transform: translateX(-60px) scale(0.96);
+    transform: translateY(40px) scale(0.97);
   }
 }
 
-/* ---------- Fallback when no video is provided ---------- */
+/* ---------- Fallback when no video ---------- */
 .card-video.no-video {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(10, 13, 26, 0.5);
+  border-radius: 8px;
 }
 
 .card-video.no-video::after {
@@ -170,7 +166,7 @@ html, body {
   letter-spacing: 1px;
 }
 
-/* ---------- Demo background (visible only when NOT in OBS) ---------- */
+/* ---------- Demo background ---------- */
 body.demo {
   background: linear-gradient(135deg, #1a1e30 0%, #0f1220 100%);
 }

@@ -9,14 +9,14 @@
 <body>
   <div id="playerCard" class="player-card" style="display:none;">
 
-    <!-- Video panel -->
+    <!-- Video (green screen) -->
     <div class="card-video" id="videoWrap">
       <video id="playerVideo" autoplay muted playsinline></video>
-      <div class="number-badge" id="playerNumber"></div>
     </div>
 
-    <!-- Info panel -->
+    <!-- Info fields (floating beside video) -->
     <div class="card-info">
+      <div class="number-badge" id="playerNumber"></div>
       <div class="player-name" id="playerName"></div>
       <div class="stat-grid">
         <div class="stat">
@@ -33,9 +33,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Accent stripe -->
-    <div class="card-stripe"></div>
   </div>
 
   <script type="module">
